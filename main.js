@@ -18,15 +18,26 @@
     size: 15,
   };
   var projectile;
+  var asteroids = [
+    { pos: [40, 40], vel: [2, 4], size: 15 },
+    { pos: [250, 40], vel: [2, -4], size: 30 },
+  ];
   var lastStamp;
 
   ctx.fillStyle = "black";
   ctx.strokeStyle = "white";
+  ctx.lineWidth = 2;
+
+  var vecAdd = function(a, b) {
+    a[0] += b[0];
+    a[1] += b[1];
+  }
 
   var render = function() {
     ctx.fillRect(0, 0, SIZE, SIZE);
     renderPlayer();
     renderProjectile();
+    renderAsteroids();
   };
 
   var renderPlayer = function() {
@@ -50,6 +61,17 @@
     path.arc(projectile.pos[0], projectile.pos[1], 2, 0, Math.PI*2, true);
     ctx.fill(path);
     ctx.restore();
+  };
+
+  var renderAsteroids = function() {
+    asteroids.forEach(function(a) {
+      ctx.save();
+      ctx.translate(a.pos[0], a.pos[1]);
+      var path = new Path2D();
+      path.arc(0, 0, a.size, 0, Math.PI*2, true);
+      ctx.stroke(path);
+      ctx.restore();
+    });
   };
 
   var keySetter = function(keyCode, value) {
@@ -80,8 +102,11 @@
   var calculate = function() {
     playerMove();
     playerShoot();
+    asteroidsMove();
+
     wrapAround(player.pos);
     if (projectile) wrapAround(projectile.pos);
+    asteroids.forEach(function(a) { wrapAround(a.pos); });
   };
 
   var playerMove = function() {
@@ -96,22 +121,17 @@
         ENGINE_THRUST * Math.cos(player.dir),
         ENGINE_THRUST * Math.sin(player.dir),
       ];
-      player.vel[0] += thrustVec[0];
-      player.vel[1] += thrustVec[1];
+      vecAdd(player.vel, thrustVec);
     }
 
-    player.pos[0] += player.vel[0];
-    player.pos[1] += player.vel[1];
+    vecAdd(player.pos, player.vel);
   };
 
   var playerShoot = function() {
     if (projectile) {
       projectile.reach -= 1;
       if (projectile.reach == 0) projectile = null;
-      else {
-        projectile.pos[0] += projectile.vel[0];
-        projectile.pos[1] += projectile.vel[1];
-      }
+      else vecAdd(projectile.pos, projectile.vel);
     } else if (keyState.space) {
       projectile = {
         pos: [player.pos[0], player.pos[1]],
@@ -121,8 +141,21 @@
         ],
         reach: 30
       }
-      projectile.pos[0] += 1.1 * projectile.vel[0];
-      projectile.pos[1] += 1.1 * projectile.vel[1];
+      vecAdd(projectile.pos, [1.1 * projectile.vel[0], 1.1 * projectile.vel[1]]);
+    }
+  };
+
+  var asteroidsMove = function() {
+    asteroids.forEach(function(a) {
+      vecAdd(a.pos, a.vel);
+    });
+
+    if (Math.random() < 0.01) {
+      asteroids.push({
+        pos: [Math.random() * SIZE, Math.random() * SIZE],
+        vel: [Math.random() * 8 - 4, Math.random() * 8 - 4],
+        size: Math.random() * 20 + 10
+      });
     }
   };
 
