@@ -1,6 +1,7 @@
 (function() {
   var ENGINE_THRUST = 0.2;
   var SIZE = 750;
+  var ASTEROID_SIZE_THRESHOLD = 15;
   var TICK_LENGTH = 40;
 
   var canvas = document.getElementById('canvas');
@@ -24,14 +25,18 @@
   ];
   var lastStamp;
 
-  ctx.fillStyle = "black";
-  ctx.strokeStyle = "white";
+  ctx.fillStyle = 'black';
+  ctx.strokeStyle = 'white';
   ctx.lineWidth = 2;
 
   var vecAdd = function(a, b) {
     a[0] += b[0];
     a[1] += b[1];
   }
+
+  var vecLen2 = function(a) {
+    return a[0] * a[0] + a[1] * a[1];
+  };
 
   var render = function() {
     ctx.fillRect(0, 0, SIZE, SIZE);
@@ -56,7 +61,7 @@
   var renderProjectile = function() {
     if (!projectile) return;
     ctx.save();
-    ctx.fillStyle = "white";
+    ctx.fillStyle = 'white';
     var path = new Path2D();
     path.arc(projectile.pos[0], projectile.pos[1], 2, 0, Math.PI*2, true);
     ctx.fill(path);
@@ -103,6 +108,7 @@
     playerMove();
     playerShoot();
     asteroidsMove();
+    checkCollisions();
 
     wrapAround(player.pos);
     if (projectile) wrapAround(projectile.pos);
@@ -150,13 +156,45 @@
       vecAdd(a.pos, a.vel);
     });
 
-    if (Math.random() < 0.01) {
+    if (asteroids.length < 15 && Math.random() < 0.005) {
       asteroids.push({
         pos: [Math.random() * SIZE, Math.random() * SIZE],
         vel: [Math.random() * 8 - 4, Math.random() * 8 - 4],
-        size: Math.random() * 20 + 10
+        size: Math.random() * 20 + ASTEROID_SIZE_THRESHOLD
       });
     }
+  };
+
+  var checkCollisions = function() {
+    var asteroidsHit = [];
+
+    asteroids.forEach(function(a, i) {
+      if (projectile) {
+        var vec = [-projectile.pos[0], -projectile.pos[1]];
+        vecAdd(vec, a.pos);
+        var len2 = vecLen2(vec);
+
+        if (len2 <= a.size * a.size) {
+          projectile = null;
+          asteroidsHit.unshift(i);
+        }
+      }
+    });
+
+    asteroidsHit.forEach(function(i) {
+      var a = asteroids.splice(i, 1)[0];
+      if (a.size < ASTEROID_SIZE_THRESHOLD) return;
+      asteroids.push({
+        pos: [a.pos[0], a.pos[1]],
+        vel: [Math.random() * 8 - 4, Math.random() * 8 - 4],
+        size: a.size / 2
+      });
+      asteroids.push({
+        pos: [a.pos[0], a.pos[1]],
+        vel: [Math.random() * 8 - 4, Math.random() * 8 - 4],
+        size: a.size / 2
+      });
+    });
   };
 
   var wrapAround = function(pos) {
@@ -167,8 +205,6 @@
   };
 
   var main = function(stamp) {
-
-
     requestAnimationFrame(main);
 
     render();
